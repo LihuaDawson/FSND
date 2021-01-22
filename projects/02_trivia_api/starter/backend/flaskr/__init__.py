@@ -32,9 +32,9 @@ def create_app(test_config=None):
   '''
   @app.after_request
   def after_request(response):
-        response.headers.add('Access-Control-Allow-Headers','Content-Type, Authorization')
-        response.headers.add('Access-Control-Allow-Methods','GET,POST,PATCH,DELETE,OPTIONS')
-        return response
+      response.headers.add('Access-Control-Allow-Headers','Content-Type, Authorization')
+      response.headers.add('Access-Control-Allow-Methods','GET,POST,PATCH,DELETE,OPTIONS')
+      return response
 
   '''
   @TODO: 
@@ -115,7 +115,31 @@ def create_app(test_config=None):
   the form will clear and the question will appear at the end of the last page
   of the questions list in the "List" tab.  
   '''
+  @app.route('/add',methods=['POST'])
+  def add_question():
+        body = request.get_json()
+        question = body.get('question',None)
+        answer = body.get('answer', None)
+        category = body.get('category', None)
+        difficulty = body.get('difficulty', None)
 
+        try:
+            question = Question(question = question, answer = answer,
+                                category = category, difficulty = difficulty)
+            question.insert()
+
+            selection = Question.query.all()
+            current_question = paginate_questions(request,selection)
+
+            return jsonify({
+              'success': True,
+              'created': question.id,
+              'questions': current_question,
+              'total_question': len(selection)
+            })
+        except:
+          abort(422)
+        
   '''
   @TODO: 
   Create a POST endpoint to get questions based on a search term. 
@@ -154,7 +178,38 @@ def create_app(test_config=None):
   Create error handlers for all expected errors 
   including 404 and 422. 
   '''
-  
+  @app.errorhandler(404)
+  def not_found(error):
+        return jsonify({
+          "success": False,
+          "error": 404,
+          "message": "resource not found"
+        }), 404
+
+  @app.errorhandler(422)
+  def unprocessable(error):
+        return jsonify({
+          "success": False,
+          "error": 422,
+          "message": "cannot process request although it's properly formatted"
+        }), 422
+
+  @app.errorhandler(400)
+  def bad_request(error):
+        return jsonify({
+          "success": False,
+          "error": 400,
+          "message": "bad request"
+        }),400
+
+  @app.errorhandler(405)
+  def method_not_found(error):
+        return jsonify({
+          "success": False,
+          "error": 405,
+          "message":"Method Not Allowed"
+        }),405
+        
   return app
 
     
