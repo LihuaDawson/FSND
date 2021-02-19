@@ -77,8 +77,7 @@ def create_app(test_config=None):
           'success': True,
           'questions': formatted_questions,
           'total_questions': len(questions),
-          'categories':categories,
-          'current_category': None
+          'categories':categories
         })
 
   '''
@@ -219,11 +218,10 @@ def create_app(test_config=None):
 
   @app.route('/quizzes',methods=['POST'])
   def play_quiz():
-      print("line 222:",request.get_data())
+      
       quiz_category = request.json.get('quiz_category')
-      print('line 224: quiz_category:',quiz_category)
       previous_questions = request.json.get('previous_questions')
-      print('line 226: previous_questions: ', previous_questions)
+  
       try:
         if quiz_category:
               if quiz_category['id'] == 0:
