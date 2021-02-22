@@ -17,6 +17,12 @@ class TriviaTestCase(unittest.TestCase):
         self.database_name = "trivia_test"
         self.database_path = "postgres://{}/{}".format('localhost:5432', self.database_name)
         setup_db(self.app, self.database_path)
+        self.add_question = {
+            'question':'testing question',
+            'answer':'testing answer',
+            'difficulty':1 ,
+            'category':1
+        }
 
         
         # binds the app to the current context
@@ -60,29 +66,65 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(len(data['categories']),6)
     
     def test_add_question(self):
-        res = self.client().post('/add', json={
-            'question':'testing question',
-            'answer':'testing answer',
-            'category':1,
-            'difficulty':1  
-        })
+        res = self.client().post('/add', json=self.add_question)
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 200)
         self.assertEqual(data['success'],True)
+        question_id = data['created']
+        self.client().delete('/questions/'+str(question_id))
         
 
     def test_delete_question(self):
-        
-        res = self.client().delete('/questions/22')
+        question = Question(question='question to delete', answer='answer to delete', category=1,difficulty =1)
+        question.insert()
+        question_id = question.id
+        res = self.client().delete('/questions/'+str(question.id))
         data = json.loads(res.data)
-        question = Question.query.filter(Question.id == 22).one_or_none()
+        question = Question.query.filter(Question.id == question.id).one_or_none()
 
         self.assertEqual(res.status_code, 200)
         self.assertEqual(data['success'], True)
-        self.assertEqual(data['deleted'],22)
+        self.assertEqual(data['deleted'],question_id)
         self.assertTrue(len(data['questions']))
         self.assertEqual(question, None)
+    
+    def test_search_question_with_result(self):
+        res = self.client().post('/questions', json={'searchTerm':'soccer'})
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code,200)
+        self.assertEqual(data['success'],True)
+        self.assertTrue(data['questions'],True)
+        self.assertTrue(data['total_questions'],2)
+    
+    def test_search_question_without_result(self):
+        res = self.client().post('/questions', json={'searchTerm': 'melon'})
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code,200)
+        self.assertEqual(data['success'],True)
+        self.assertEqual(data['questions'],[])
+        self.assertEqual(data['total_questions'],0)
+
+    def test_get_questions_by_category(self):
+        res = self.client().get('categories/'+str(2)+'/questions')
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code,200)
+        self.assertEqual(data['success'],True)
+        self.assertEqual(data['total_questions'],6)
+        self.assertEqual(data['current_category'],2)
+
+    def test_quiz(self):
+        res = self.client().post('/quizzes', json={'quiz_category':{'type': 'Science', 'id': '1'}, 'previous_questions':[]})
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code,200)
+        self.assertEqual(data['success'],True)
+        self.assertTrue(data['question'])
+        self.assertEqual(data['current_category'],'Science')
+
       
 
 # Make the tests conveniently executable

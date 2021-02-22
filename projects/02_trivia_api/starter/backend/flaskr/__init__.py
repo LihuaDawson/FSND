@@ -137,7 +137,8 @@ def create_app(test_config=None):
             'questions': current_question,
             'total_question': len(selection)
           })
-      except:
+      except Exception as e:
+        print('Exception >> ', e)
         abort(422)
         
   '''
@@ -221,7 +222,7 @@ def create_app(test_config=None):
       
       quiz_category = request.json.get('quiz_category')
       previous_questions = request.json.get('previous_questions')
-  
+
       try:
         if quiz_category:
               if quiz_category['id'] == 0:
