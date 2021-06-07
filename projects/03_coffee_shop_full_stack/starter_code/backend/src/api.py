@@ -3,9 +3,21 @@ from flask import Flask, request, jsonify, abort
 from sqlalchemy import exc
 import json
 from flask_cors import CORS
+from urllib.request import urlopen
 
 from .database.models import db_drop_and_create_all, setup_db, Drink
-from .auth.auth import AuthError, requires_auth
+from .auth.auth import ALGORITHMS, API_AUDIENCE, AUTH0_DOMAIN, AuthError, requires_auth
+
+##Configuration
+AUTH0_DOMAIN = 'fsnd-lihua.us.auth0.com'
+ALGORITHMS = ['RS256']
+API_AUDIENCE = 'coffee_shop'
+
+jsonurl = urlopen(f'https://{AUTH0_DOMAIN}/.well-known/jwks.json')
+jwks = json.loads(jsonurl.read())
+print(jwks)
+
+
 
 app = Flask(__name__)
 setup_db(app)
@@ -16,7 +28,7 @@ CORS(app)
 !! NOTE THIS WILL DROP ALL RECORDS AND START YOUR DB FROM SCRATCH
 !! NOTE THIS MUST BE UNCOMMENTED ON FIRST RUN
 '''
-# db_drop_and_create_all()
+db_drop_and_create_all()
 
 ## ROUTES
 '''
@@ -27,6 +39,17 @@ CORS(app)
     returns status code 200 and json {"success": True, "drinks": drinks} where drinks is the list of drinks
         or appropriate status code indicating reason for failure
 '''
+@app.route('/drinks', methods=['GET'])
+def get_drinks():
+    drinks = Drink.query.all()
+    all_drinks = []
+    for drink in drinks:
+        all_drinks.append(drink.short())
+    print('drinks: ', all_drinks)
+    return jsonify({
+        'success': True,
+        'drinks':all_drinks
+    },200)
 
 
 '''
@@ -37,7 +60,13 @@ CORS(app)
     returns status code 200 and json {"success": True, "drinks": drinks} where drinks is the list of drinks
         or appropriate status code indicating reason for failure
 '''
-
+@app.route('/drinks-detail', methods=['GET'])
+def get_drink_detail():
+    drinks = Drink.query.all()
+    return jsonify({
+        'success': True,
+        'drinks':drinks
+    },200)
 
 '''
 @TODO implement endpoint
@@ -108,3 +137,21 @@ def unprocessable(error):
 @TODO implement error handler for AuthError
     error handler should conform to general task above 
 '''
+
+class AuthError(Exception):
+    def __init__(self,error,status_code):
+        self.error = error
+        self.status_code = status_code
+
+## check if permission allowed
+def check_permissions(permission, payload):
+    if 'permissions' not in payload:
+        raise AuthError({
+            'code': 'invalid_claims',
+            'description':'Permissions not included in JWT.'
+        },400)
+    if permission not in payload['permissions']:
+        raise AuthError({
+            'code':'unauthorized',
+            'description':'Permission not found.'
+        },403)
